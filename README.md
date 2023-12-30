@@ -1,96 +1,447 @@
-# Obsidian Sample Plugin
+# Obsidian Links <!-- omit in toc -->
 
-This is a sample plugin for Obsidian (https://obsidian.md).
 
-This project uses Typescript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in Typescript Definition format, which contains TSDoc comments describing what it does.
+Manipulate links in [Obsidian](https://obsidian.md).
 
-**Note:** The Obsidian API is still in early alpha and is subject to change at any time!
+- [Features](#features)
+  - [Unlink](#unlink)
+  - [Delete link](#delete-link)
+  - [Convert wikilink or html link to markdown link](#convert-wikilink-or-html-link-to-markdown-link)
+  - [Convert markdown link to Wikilink](#convert-markdown-link-to-wikilink)
+  - [Convert markdown link to autolink](#convert-markdown-link-to-autolink)
+  - [Convert autolink to markdown link](#convert-autolink-to-markdown-link)
+  - [Convert URL to markdown link](#convert-url-to-markdown-link)
+  - [Convert URL to autolink](#convert-url-to-autolink)
+  - [Convert multiple links](#convert-multiple-links)
+    - [Convert all links to markdown links](#convert-all-links-to-markdown-links)
+    - [Convert wikilinks to markdown links](#convert-wikilinks-to-markdown-links)
+    - [Convert autolinks to markdown links](#convert-autolinks-to-markdown-links)
+    - [Convert URLs to markdown links](#convert-urls-to-markdown-links)
+    - [Convert HTML links to markdown links](#convert-html-links-to-markdown-links)
+  - [Copy link destination to clipboard](#copy-link-destination-to-clipboard)
+  - [Remove links from headings](#remove-links-from-headings)
+    - [Configuration](#configuration)
+      - [Internal wikilink without text](#internal-wikilink-without-text)
+  - [Edit link text](#edit-link-text)
+  - [Edit link destination](#edit-link-destination)
+  - [Set link text](#set-link-text)
+  - [Create link from selection](#create-link-from-selection)
+  - [Create link from clipboard](#create-link-from-clipboard)
+  - [Embed / Unembed files](#embed--unembed-files)
+  - [Copy link](#copy-link)
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
 
-## First time developing plugins?
+# Features
 
-Quick starting guide for new plugin devs:
+## Unlink
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+Unlink single link or all links in a selection.
 
-## Releasing new releases
+- Command palette: **Unlink**
+- Context menu: **Unlink**
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+<details>
+<summary>Demo. Single link.</summary>
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+![remove link](docs/img/unlink-link.gif)
 
-## Adding your plugin to the community plugin list
+</details>
 
-- Check https://github.com/obsidianmd/obsidian-releases/blob/master/plugin-review.md
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+<details>
+<summary>Demo. Links in a selection.</summary>
 
-## How to use
+![remove link](docs/img/unlink-selection.gif)
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+</details>
 
-## Manually installing the plugin
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Delete link
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
+- Command palette: **Delete link**
+- Context menu: **Delete**
 
-## Funding URL
+<details>
+<summary>Demo. Wikilink</summary>
 
-You can include funding URLs where people who use your plugin can financially support it.
+![delete link](docs/img/delete-wikilink.gif)
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+</details>
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+<details>
+<summary>Demo. Makdown link</summary>
 
-If you have multiple URLs, you can also do:
+![delete link](docs/img/delete-markdown-link.gif)
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+</details>
 
-## API Documentation
+<details>
+<summary>Demo. Autolink</summary>
 
-See https://github.com/obsidianmd/obsidian-api
+![delete link](docs/img/delete-autolink.gif)
+
+</details>
+
+## Convert wikilink or html link to markdown link
+
+Convert a wikilink or HTML link to a markdown link. If a wiki link contains spaces a destination of a markdown link will be places in `<>`. HTML link must be expanded.
+
+- Command palette: **Convert to markdown link**
+- Context menu: **Convert to markdown link**
+
+<details>
+<summary>Demo. Wikilink</summary>
+
+![convert wikilink to markdown link](docs/img/convert-wikilink-to-mdlink.gif)
+
+</details>
+
+<details>
+<summary>Demo. HTML link</summary>
+
+![convert html link to markdown link](docs/img/convert-htmllink-to-mdlink.gif)
+
+</details>
+
+see [Convert wikilinks to markdown links](#convert-wikilinks-to-markdown-links)<br/>
+see [Convert HTML links to markdown links](#convert-html-links-to-markdown-links)
+
+
+## Convert markdown link to Wikilink
+- Command palette: **Convert to wikilink**
+- Context menu: **Convert to wikilink**
+
+
+<details>
+<summary>Demo</summary>
+
+![convert markdown link to wiki link](docs/img/convert-to-wikilink.gif)
+
+</details>
+
+## Convert markdown link to autolink
+
+Converts a markdown link with an absolute URL or an email address to an autolink.
+
+- Command palette: **Convert to autolink**
+- Context menu: **Convert to autolink**
+
+
+<details>
+<summary>Demo. Markdown link with absolute URL.</summary>
+
+![convert markdown link to wiki link](docs/img/convert-markdown-url-link-to-autolink.gif)
+
+</details>
+
+<details>
+<summary>Demo. Markdown link with email address.</summary>
+
+![convert markdown link to wiki link](docs/img/convert-markdown-email-link-to-autolink.gif)
+
+</details>
+
+## Convert autolink to markdown link
+
+Convert an autolink to a markdown link.
+If an autolink has an absolute URI with `http` or `https` scheme content of the `<title/>` element will be set as a link text. If request fails or the URL has other scheme cursor will be placed inside the `[]` of the markdown link. For email autolink `mailto` scheme will be added before email address.
+
+- Command palette: **Convert to markdown link**
+- Context menu: **Convert to markdown link**
+
+<details>
+<summary>Demo. Convert autolink to markdown link</summary>
+
+![convert to markdown link](/docs/img/convert-autolink-to-markdown-link.gif)
+
+</details>
+
+see [Convert autolinks to markdown links](#convert-autolinks-to-markdown-links)
+
+## Convert URL to markdown link
+
+Convert a raw URL to a markdown link.
+If a URL has an absolute URI with `http` or `https` scheme content of the `<title/>` element will be set as a link text. If request fails or the URL has other scheme cursor will be placed inside the `[]` of the markdown link.
+
+- Command palette: **Convert to markdown link**
+- Context menu: **Convert to markdown link**
+
+<details>
+<summary>Demo. Convert a URL to a markdown link</summary>
+
+![convert to markdown link](/docs/img/convert-url-to-markdown-link.gif)
+
+</details>
+
+see [Convert URLs to markdown links](#convert-urls-to-markdown-links)
+
+## Convert URL to autolink
+
+Convert an absolute URL to an autolink.
+
+- Command palette: **Convert to autolink**
+- Context menu: **Convert to autolink**
+
+<details>
+<summary>Demo. Convert an absolute URL to an autolink</summary>
+
+![convert to markdown link](/docs/img/convert-url-to-autolink.gif)
+
+</details>
+
+## Convert multiple links
+
+Converts multiple links in a note or in a selection to markdown links.
+
+### Convert all links to markdown links
+Convert plain URLs, html links, wiki links, autolinks in a note or in a selection to markdown links.
+For URLs and autolinks with absolute URL with `http://` or `https://` schemes link text will be set to a content of a `<title/>` element of the page loaded from the URL.
+
+- Command palette: **Convert all links to Markdown links**
+- Context menu: **Convert all links to Markdown links** (enable in Settings)
+
+<details>
+<summary>Demo. Convert all links in a note to markdown links </summary>
+
+![remove link](/docs/img/convert-all-to-mdlinks.gif)
+
+</details>
+
+<details>
+<summary>Demo. Convert all links in a selection to markdown links </summary>
+
+![remove link](/docs/img/convert-all-in-selection-to-mdlinks.gif)
+
+</details>
+
+### Convert wikilinks to markdown links
+Convert multiple wikilinks in a note or in a selection to markdown links.
+
+- Command palette: **Convert Wikilinks to Markdown links**
+- Context menu: **Convert Wikilinks to Markdown links** (enable in Settings)
+
+Demo. see [Convert all links to markdown links](#convert-all-links-to-markdown-links)
+
+see [Convert all links to markdown links](#convert-all-links-to-markdown-links)
+
+### Convert autolinks to markdown links
+Convert multiple autolinks in a note or in a selection to markdown links.
+For autolinks with absolute URL with `http://` or `https://` schemes link text will be set to a content of a `<title/>` element of the page loaded from the URL.
+
+- Command palette: **Convert Autolinks to Markdown links**
+- Context menu: **Convert Autolinks to Markdown links** (enable in Settings)
+
+Demo. see [Convert all links to markdown links](#convert-all-links-to-markdown-links)
+
+### Convert URLs to markdown links
+Convert multiple raw URLs in a note or in a selection to markdown links.
+For absolute URLs with `http://` or `https://` schemes link text will be set to a content of a `<title/>` element of the page loaded from the URL.
+
+- Command palette: **Convert URLs to Markdown links**
+- Context menu: **Convert URLs to Markdown links** (enable in Settings)
+
+Demo. see [Convert all links to markdown links](#convert-all-links-to-markdown-links)
+
+### Convert HTML links to markdown links
+Convert multiple raw URLs in a note or in a selection to markdown links.
+
+- Command palette: **Convert HTML links to Markdown links**
+- Context menu: **Convert HTML links to Markdown links** (enable in Settings)
+
+Demo. see [Convert all links to markdown links](#convert-all-links-to-markdown-links)
+
+## Copy link destination to clipboard
+
+Copy link part of markdown, wiki or html link to the clipboard.
+
+- Command palette: **Copy link destination**
+- Context menu: **Copy link destination**
+
+<details>
+<summary>Demo</summary>
+
+![copy link destination to clipboard](docs/img/copy-link-destination.gif)
+
+</details>
+
+
+## Remove links from headings
+
+Remove links from headings in selection or in an entier note. 
+Each link is replaced with it's text. Links without text are removed. Wikilink without text by default replaced with it's destination.
+
+- Command palette:  **Remove links from headings**
+
+<details>
+<summary>Demo</summary>
+
+![Remove links from headings](docs/img/remove-links-from-headings.gif)
+
+</details>
+
+### Configuration
+
+#### Internal wikilink without text
+
+Available options:
+- Remove
+- Replace with destination   [default]
+- Replace with lowest heading
+
+<details>
+<summary>Demo. Remove</summary>
+Original text:
+
+![Alt text](/docs/img/heading-wikilink-notext-subheadings.png)
+
+After command execution:
+
+![Alt text](/docs/img/heading-wikilink-notext-result-remove.png)
+
+</details>
+
+<details>
+<summary>Demo. Replace with destination</summary>
+Original text:
+
+![Alt text](/docs/img/heading-wikilink-notext-subheadings.png)
+
+After command execution:
+
+![Alt text](/docs/img/heading-wikilink-notext-result-destination.png)
+
+</details>
+
+<details>
+<summary>Demo. Replace with lowest heading</summary>
+Original text:
+
+![Alt text](/docs/img/heading-wikilink-notext-subheadings.png)
+
+After command execution:
+
+![Alt text](/docs/img/heading-wikilink-notext-result-lowest-heading.png)
+
+</details>
+
+## Edit link text
+
+Select link text and place cursor at the end of the text
+
+- Command palette: **Edit link text**
+- Context menu: **Edit link text**
+
+<details>
+<summary>Demo</summary>
+
+![Edit link text](docs/img/edit-link-text.gif)
+
+</details>
+
+## Edit link destination
+
+Select link text and place cursor at the end of the text
+
+- Command palette: **Edit link destination**
+- Context menu: **Edit link destination**
+
+<details>
+<summary>Demo</summary>
+
+![Edit link text](docs/img/edit-link-destination.gif)
+
+</details>
+
+## Set link text
+Change or add link text, select it and place cursor at the end of the text. 
+Link text depends on the kind of a link. 
+For local notes text will be either file name of the note or popup with suggested link texts. Title separator can be specified in the plugin settings. 
+For external http[s] links, page content is requested and link text is set to the title (content of `<title/>` element) of the requested page content.
+
+
+- Command palette: **Set link text**
+- Context menu: **Set link text**
+
+
+<details>
+<summary>Demo. Link to a local note</summary>
+
+![Link to local note](docs/img/set-link-text-local.gif)
+
+</details>
+
+<details>
+<summary>Demo. Link to a heading in a local note</summary>
+
+![Link to a heading in local note](docs/img/set-link-text-local-heading.gif)
+
+</details>
+
+<details>
+<summary>Demo. External link</summary>
+
+![External link](docs/img/set-link-text-external.gif)
+
+</details>
+
+## Create link from selection
+Create link from selected text.
+
+- Command palette: **Create link**
+- Context menu: **Create link**
+
+
+<details>
+<summary>Demo</summary>
+
+![Create link from selection](docs/img/create-wikilink-from-selection.gif)
+
+</details>
+
+## Create link from clipboard
+Create link from textual content of the system clipboard.
+
+- Command palette: **Create link from clipboard**
+- Context menu: **Create link from clipboard**
+
+
+<details>
+<summary>Demo</summary>
+
+![Create link from selection](docs/img/create-mdlink-from-clipboard.gif)
+
+</details>
+
+## Embed / Unembed files
+
+Add or remove [file embedding](https://help.obsidian.md/Linking+notes+and+files/Embedding+files#:~:text=To%20embed%20a%20file%20in,of%20the%20Accepted%20file%20formats.) from a wikilink or a markdown link.
+
+- Command palette: Embed / Unembed link
+- Context menu: Embed / Unembed
+
+<details>
+<summary>Demo. Embed </summary>
+
+![remove link](/docs/img/embed-link.gif)
+
+</details>
+
+<details>
+<summary>Demo. Unembed </summary>
+
+![remove link](/docs/img/unembed-link.gif)
+
+</details>
+
+## Copy link
+
+Copy markdown, wiki, auto, html link or plain url to clipboard
+
+- Command palette: Copy link
+- Context menu: Copy link
+
+<details>
+<summary>Demo. Copy link to clipbard </summary>
+
+![remove link](/docs/img/copy-link-to-clipboard.gif)
+
+</details>

@@ -1,81 +1,177 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownFileInfo, MarkdownView, Notice, Plugin, PluginManifest, TAbstractFile, htmlToMarkdown, requestUrl, moment, RequestUrlParam, RequestUrlResponsePromise } from 'obsidian';
+import { findLink, replaceAllHtmlLinks, LinkData, replaceMarkdownTarget, removeExtention, InternalWikilinkWithoutTextAction } from './utils/helper';
+import { LinkTextSuggest } from 'suggesters/LinkTextSuggest';
+import { ILinkTextSuggestContext } from 'suggesters/ILinkTextSuggestContext';
+import { ReplaceLinkModal } from 'ui/ReplaceLinkModal';
+import { ObsidianProxy } from 'commands/ObsidianProxy';
+import { DEFAULT_SETTINGS, IObsidianLinksSettings } from 'settings';
+import { ObsidianLinksSettingTab } from 'ObsidianLinksSettingTab';
+import { getContextMenuCommands, getPaletteCommands } from 'commands/Commands';
 
-// Remember to rename these classes and interfaces!
+export default class ObsidianLinksPlugin extends Plugin {
+	settings: IObsidianLinksSettings;
+	obsidianProxy: ObsidianProxy;
 
-interface MyPluginSettings {
-	mySetting: string;
-}
+	readonly EmailScheme: string = "mailto:";
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+	linkTextSuggestContext: ILinkTextSuggestContext;
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+
+	constructor(app: App, manifest: PluginManifest) {
+		super(app, manifest)
+
+		this.linkTextSuggestContext = {
+			app: app,
+			titleSeparator: " • ",
+			titles: [],
+			provideSuggestions: false,
+
+			setLinkData(linkData: LinkData, titles: string[]) {
+				this.linkData = linkData;
+				this.titles = titles;
+				this.provideSuggestions = true;
+			},
+
+			clearLinkData() {
+				this.provideSuggestions = false;
+				this.linkData = undefined;
+				this.titles = [];
+			}
+		};
+
+		// this.obsidianProxy = new ObsidianProxy(this.linkTextSuggestContext, this.settings);
+	}
+
+	createNotice(message: string | DocumentFragment, timeout?: number): Notice {
+		return new Notice(message, timeout);
+	}
+
+	requestUrl(request: RequestUrlParam | string): RequestUrlResponsePromise {
+		return requestUrl(request);
+	}
+
+	measurePerformance(func: Function): number {
+		const start = moment();
+		try {
+			func();
+		}
+		finally {
+			return moment().diff(start);
+		}
+	}
 
 	async onload() {
 		await this.loadSettings();
+		//TODO:
+		this.obsidianProxy = new ObsidianProxy(this.app, this.linkTextSuggestContext, this.settings);
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
+		//TODO: remove
+		if(this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction === InternalWikilinkWithoutTextAction.None){
+			switch(this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextReplacement){
+				case "Destination":
+					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction = InternalWikilinkWithoutTextAction.ReplaceWithDestination;
+					break;
+				case "LowestNoteHeading":
+					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction = InternalWikilinkWithoutTextAction.ReplaceWithLowestNoteHeading;
+					break;
+				default:
+					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction = InternalWikilinkWithoutTextAction.ReplaceWithDestination;
 			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+			await this.saveSettings();
+		}
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+		this.addSettingTab(new ObsidianLinksSettingTab(this.app, this));
+
+		this.registerEditorSuggest(new LinkTextSuggest(this.linkTextSuggestContext));
+
+		const commands = getPaletteCommands(this.obsidianProxy, this.settings);
+		for (let cmd of commands) {
+			cmd.setApp?.(this.app);
+
+			this.addCommand({
+				id: cmd.id,
+				name: cmd.displayNameCommand,
+				icon: cmd.icon,
+				editorCheckCallback: (checking, editor, ctx) => cmd.handler(editor, checking)
+			});
+		}
+
+		if (this.settings.ffReplaceLink) {
+			this.addCommand({
+				id: 'editor-replace-external-link-with-internal',
+				name: 'Replace link',
+				icon: "pencil",
+				editorCheckCallback: (checking, editor, ctx) => this.replaceExternalLinkUnderCursorHandler(editor, checking)
+			});
+		}
+
+		if (this.settings.ffReplaceLink) {
+			this.registerEvent(
+				this.app.workspace.on("file-open", (file) => this.replaceMarkdownTargetsInNote())
+			)
+			this.registerEvent(
+				this.app.vault.on("delete", (file) => this.deleteFileHandler(file))
+			);
+
+			this.registerEvent(
+				this.app.vault.on("rename", (file, oldPath) => this.renameFileHandler(file, oldPath))
+			);
+
+			this.registerEvent(
+				this.app.workspace.on('editor-paste', (evt, editor, view) => this.onEditorPaste(evt, editor, view))
+			);
+
+			if (this.settings.ffReplaceLink) {
+				//TODO: temp command.
+				this.addCommand({
+					id: 'editor-replace-markdown-targets-in-note',
+					name: '#Replace markdown link in notes',
+					editorCallback: (editor: Editor, view: MarkdownView) => this.replaceMarkdownTargetsInNote()
+				});
+			}
+		}
+
+		this.registerEvent(
+			this.app.workspace.on("editor-menu", (menu, editor, view) => {
+				const linkData = this.getLink(editor);
+				const selection = editor.getSelection();
+				let addTopSeparator = function () {
+					menu.addSeparator();
+					addTopSeparator = function () { };
 				}
-			}
-		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+				const commands = getContextMenuCommands(this.obsidianProxy, this.settings);
+				for (const cmd of commands) {
+					if (cmd == null) {
+						addTopSeparator();
+					} else {
+						if (cmd.handler(editor, true)) {
+							menu.addItem((item) => {
+								item
+									.setTitle(cmd.displayNameContextMenu)
+									.setIcon(cmd.icon)
+									.onClick(async () => {
+										cmd.handler(editor, false);
+									});
+							});
+						}
+					}
+				}
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+				if (linkData) {
+					if (this.settings.ffReplaceLink && this.settings.contexMenu.replaceLink) {
+						menu.addItem((item) => {
+							item
+								.setTitle("Replace link")
+								.setIcon("pencil")
+								.onClick(async () => {
+									this.replaceExternalLink(linkData, editor);
+								});
+						});
+					}
+				}
+			})
+		);
 	}
 
 	onunload() {
@@ -84,51 +180,143 @@ export default class MyPlugin extends Plugin {
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.linkTextSuggestContext.titleSeparator = this.settings.titleSeparator;
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+
+		this.linkTextSuggestContext.titleSeparator = this.settings.titleSeparator;
+	}
+
+	getLink(editor: Editor): LinkData | undefined {
+		const text = editor.getValue();
+		const cursorOffset = editor.posToOffset(editor.getCursor('from'));
+		return findLink(text, cursorOffset, cursorOffset)
+	}
+
+	convertHtmlLinksToMdLinks = () => {
+		const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (mdView && mdView.getViewData()) {
+			const text = mdView.getViewData();
+			const result = replaceAllHtmlLinks(text)
+			mdView.setViewData(result, false);
+		}
+	}
+
+	replaceExternalLinkUnderCursorHandler(editor: Editor, checking: boolean): boolean | void {
+		const linkData = this.getLink(editor);
+		if (checking) {
+			return !!linkData;
+		}
+		if (linkData) {
+			this.replaceExternalLink(linkData, editor);
+		}
+	}
+
+	replaceExternalLink(linkData: LinkData, editor: Editor) {
+		new ReplaceLinkModal(this.app, async (path) => {
+			if (path) {
+				this.settings.linkReplacements.push({
+					source: linkData.link!.content,
+					target: path
+				})
+				await this.saveSettings();
+				this.replaceMarkdownTargetsInNote();
+			}
+		}).open();
+	}
+
+	escapeRegex(str: string): string {
+		return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
+	}
+
+	replaceMarkdownTargetsInNote() {
+		const e = this.measurePerformance(() => {
+			const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (mdView && mdView.getViewData()) {
+				const text = mdView.getViewData();
+				const [result, count] = this.replaceLinksInText(text)
+				if (count) {
+					mdView.setViewData(result, false);
+					new Notice(`Links: ${count} items replaced.`);
+				}
+			}
+		});
+		if (this.settings.showPerformanceNotification) {
+			new Notice(`${e} ms`);
+		}
+	}
+
+
+	replaceLinksInText(text: string): [string, number] {
+		let targetText = text;
+		let totalCount = 0;
+		this.settings.linkReplacements.forEach(e => {
+			const [newText, count] = replaceMarkdownTarget(targetText, e.source, e.target);
+			targetText = newText;
+			totalCount += count;
+		});
+		return [targetText, totalCount];
+	}
+
+	onEditorPaste(evt: ClipboardEvent, editor: Editor, view: MarkdownView | MarkdownFileInfo) {
+		const html = evt.clipboardData?.getData('text/html');
+		if (html && html.indexOf('<a') > 0) {
+			const markdown = htmlToMarkdown(html);
+			const [text, count] = this.replaceLinksInText(markdown);
+			if (count) {
+				evt.preventDefault();
+				const fromOffset = editor.posToOffset(editor.getCursor('from'));
+				if (editor.getSelection()) {
+					editor.replaceSelection(text);
+				} else {
+					editor.replaceRange(text, editor.getCursor('from'));
+				}
+				editor.setCursor(editor.offsetToPos(fromOffset + text.length));
+			}
+		}
+	}
+
+	deleteFileHandler(file: TAbstractFile) {
+		const [pathWithoutExtention, success] = removeExtention(file.path);
+		if (!success) {
+			return;
+		}
+
+		const replacements = this.settings.linkReplacements.filter(r => {
+			const hashIdx = r.target.indexOf('#');
+			return hashIdx > 0 ?
+				r.target.substring(0, hashIdx) !== pathWithoutExtention
+				: r.target !== pathWithoutExtention;
+		});
+		this.settings.linkReplacements = replacements;
+		this.saveSettings();
+	}
+
+	renameFileHandler(file: TAbstractFile, oldPath: string) {
+		const [oldPathWithoutExtention, success] = removeExtention(oldPath);
+		if (!success) {
+			return;
+		}
+
+		let settingsChanged = false;
+		this.settings.linkReplacements.forEach(r => {
+			const hashIdx = r.target.indexOf('#');
+			const targetPath = hashIdx > 0 ? r.target.substring(0, hashIdx) : r.target;
+			if (targetPath === oldPathWithoutExtention) {
+				const [newPathWithoutExtension] = removeExtention(file.path);
+				r.target = hashIdx > 0 ?
+					newPathWithoutExtension + r.target.substring(hashIdx) : newPathWithoutExtension;
+				settingsChanged = true;
+			}
+		});
+		if (settingsChanged) {
+			this.saveSettings();
+		}
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
 
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const {containerEl} = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
-}
