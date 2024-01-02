@@ -1,8 +1,9 @@
-import { App, Editor, Notice, normalizePath, Platform, TFile } from "obsidian";
+import { App, Editor, Notice, normalizePath, Platform, Modal } from "obsidian";
 import { CommandBase, Func, ICommand } from "./ICommand";
 import { HasLinks, LinkData, LinkTypes, findLink, removeLinks } from "../utils/helper";
 import { path } from "../utils/path";
-import { NewFileLocation } from "../enum";
+import { NewFileLocation } from "../enums";
+import InputModal from "modals/InputModal";
 
 export class CreateWordNoteFromSelectionCommand extends CommandBase {
 	mode: NewFileLocation = NewFileLocation.NewTab;
@@ -23,13 +24,24 @@ export class CreateWordNoteFromSelectionCommand extends CommandBase {
 			return false;
 		}
 
-		const selection = editor.getSelection();
-
 		if (checking) {
-			return !!selection;
+			return true;
 		}
 
-		this.createNewNote(selection);
+		const selection = editor.getSelection();
+
+		if (selection) {
+			this.createNewNote(selection);
+			return;
+		}
+
+		const modal = new InputModal(this.app, {
+			onFinish: (text) => {
+				this.createNewNote(text);
+			}
+		});
+
+		modal.open();
 	}
 
 	async createNewNote(word: string): Promise<void> {
@@ -65,7 +77,8 @@ export class CreateWordNoteFromSelectionCommand extends CommandBase {
 				leaf = this.app.workspace.getLeaf(true);
 			}
 
-			app.workspace.openLinkText
+			await navigator.clipboard.writeText(word);
+
 			await leaf.openFile(File);
 		} catch (error) {
 			new Notice(error.toString());
