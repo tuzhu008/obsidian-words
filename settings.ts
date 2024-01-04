@@ -21,6 +21,7 @@ export interface IObsidianLinksSettings {
 		addWordLink: boolean,
 		removeWordLink: boolean,
 		createWordNote: boolean,
+		// addWordTask: boolean,
 
 		editLinkText: boolean;
 		setLinkText: boolean;
@@ -69,7 +70,8 @@ export const DEFAULT_SETTINGS: IObsidianLinksSettings = {
 		addWordLink: true,
 		removeWordLink: true,
 		createWordNote: true,
-		
+		// addWordTask: true,
+
 		editLinkText: true,
 		setLinkText: true,
 		setLinkTextFromClipboard: true,

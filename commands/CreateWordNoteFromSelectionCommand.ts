@@ -14,6 +14,7 @@ export class CreateWordNoteFromSelectionCommand extends CommandBase {
 	) {
 		super(isPresentInContextMenu, isEnabled);
 		this.id = "editor-create-word-note-from-selection";
+		this.displayNameRibbon = "Create Word Note";
 		this.displayNameCommand = "Create Word Note";
 		this.displayNameContextMenu = "Create Word Note";
 		this.icon = "note";
@@ -28,7 +29,7 @@ export class CreateWordNoteFromSelectionCommand extends CommandBase {
 			return true;
 		}
 
-		const selection = editor.getSelection();
+		const selection = this.getSelectionWithTrim(editor);
 
 		if (selection) {
 			this.createNewNote(selection);
@@ -59,6 +60,7 @@ export class CreateWordNoteFromSelectionCommand extends CommandBase {
 			const fileExists = await adapter.exists(filePath);
 			let File: any;
 			if (fileExists) {
+				await this.openFileByPath(filePath, this.mode);
 				throw new Error(`${filePath} already exists`);
 			}
 			if (directoryPath !== "") {
@@ -66,23 +68,16 @@ export class CreateWordNoteFromSelectionCommand extends CommandBase {
 				await this.createDirectory(directoryPath);
 			}
 			File = await vault.create(filePath, "");
-			// Create the file and open it in the active leaf
-			let leaf = this.app.workspace.getLeaf(false);
-			if (this.mode === NewFileLocation.NewPane) {
-				leaf = this.app.workspace.splitLeafOrActive();
-			} else if (this.mode === NewFileLocation.NewTab) {
-				leaf = this.app.workspace.getLeaf(true);
-			} else if (!leaf) {
-				// default for active pane
-				leaf = this.app.workspace.getLeaf(true);
-			}
 
 			await navigator.clipboard.writeText(word);
-
-			await leaf.openFile(File);
+			await this.openFile(File, this.mode);
 		} catch (error) {
 			new Notice(error.toString());
 		}
+	}
+
+	robbinHandler = () => {
+		this.openCreateModal();
 	}
 
 	private async createDirectory(dir: string): Promise<void> {
@@ -125,5 +120,15 @@ export class CreateWordNoteFromSelectionCommand extends CommandBase {
 				await adapter.mkdir(path.join(root, subPath));
 			}
 		}
+	}
+
+	private openCreateModal = () => {
+		const modal = new InputModal(this.app, {
+			onFinish: (text) => {
+				this.createNewNote(text);
+			}
+		});
+
+		modal.open();
 	}
 }

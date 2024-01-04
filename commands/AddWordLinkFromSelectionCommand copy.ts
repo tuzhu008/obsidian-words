@@ -22,8 +22,6 @@ export class AddWordLinkFromSelectionCommand extends CommandBase {
 			return !!selection;
 		}
 
-		// const linkStart = editor.posToOffset(editor.getCursor('from'));
 		editor.replaceSelection(`[[Vocabulary/${selection[0].toUpperCase()}/${selection}.md|${selection}]]`);
-		// editor.setCursor(editor.offsetToPos(linkStart + 2));
     }
 }

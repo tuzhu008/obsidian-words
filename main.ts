@@ -1,12 +1,34 @@
-import { App, Editor, MarkdownFileInfo, MarkdownView, Notice, Plugin, PluginManifest, TAbstractFile, htmlToMarkdown, requestUrl, moment, RequestUrlParam, RequestUrlResponsePromise } from 'obsidian';
-import { findLink, replaceAllHtmlLinks, LinkData, replaceMarkdownTarget, removeExtention, InternalWikilinkWithoutTextAction } from './utils/helper';
-import { LinkTextSuggest } from 'suggesters/LinkTextSuggest';
-import { ILinkTextSuggestContext } from 'suggesters/ILinkTextSuggestContext';
-import { ReplaceLinkModal } from 'ui/ReplaceLinkModal';
-import { ObsidianProxy } from 'commands/ObsidianProxy';
-import { DEFAULT_SETTINGS, IObsidianLinksSettings } from 'settings';
-import { ObsidianLinksSettingTab } from 'ObsidianLinksSettingTab';
-import { getContextMenuCommands, getPaletteCommands } from 'commands/Commands';
+import {
+	App,
+	Editor,
+	MarkdownFileInfo,
+	MarkdownView,
+	Notice,
+	Plugin,
+	PluginManifest,
+	TAbstractFile,
+	htmlToMarkdown,
+	requestUrl,
+	moment,
+	RequestUrlParam,
+	RequestUrlResponsePromise,
+	Menu,
+} from "obsidian";
+import {
+	findLink,
+	replaceAllHtmlLinks,
+	LinkData,
+	replaceMarkdownTarget,
+	removeExtention,
+	InternalWikilinkWithoutTextAction,
+} from "./utils/helper";
+import { LinkTextSuggest } from "suggesters/LinkTextSuggest";
+import { ILinkTextSuggestContext } from "suggesters/ILinkTextSuggestContext";
+import { ReplaceLinkModal } from "ui/ReplaceLinkModal";
+import { ObsidianProxy } from "commands/ObsidianProxy";
+import { DEFAULT_SETTINGS, IObsidianLinksSettings } from "settings";
+import { ObsidianLinksSettingTab } from "ObsidianLinksSettingTab";
+import { getContextMenuCommands, getPaletteCommands } from "commands/Commands";
 
 export default class ObsidianLinksPlugin extends Plugin {
 	settings: IObsidianLinksSettings;
@@ -16,9 +38,8 @@ export default class ObsidianLinksPlugin extends Plugin {
 
 	linkTextSuggestContext: ILinkTextSuggestContext;
 
-
 	constructor(app: App, manifest: PluginManifest) {
-		super(app, manifest)
+		super(app, manifest);
 
 		this.linkTextSuggestContext = {
 			app: app,
@@ -36,7 +57,7 @@ export default class ObsidianLinksPlugin extends Plugin {
 				this.provideSuggestions = false;
 				this.linkData = undefined;
 				this.titles = [];
-			}
+			},
 		};
 
 		// this.obsidianProxy = new ObsidianProxy(this.linkTextSuggestContext, this.settings);
@@ -54,8 +75,7 @@ export default class ObsidianLinksPlugin extends Plugin {
 		const start = moment();
 		try {
 			func();
-		}
-		finally {
+		} finally {
 			return moment().diff(start);
 		}
 	}
@@ -63,26 +83,42 @@ export default class ObsidianLinksPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		//TODO:
-		this.obsidianProxy = new ObsidianProxy(this.app, this.linkTextSuggestContext, this.settings);
+		this.obsidianProxy = new ObsidianProxy(
+			this.app,
+			this.linkTextSuggestContext,
+			this.settings
+		);
 
 		//TODO: remove
-		if(this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction === InternalWikilinkWithoutTextAction.None){
-			switch(this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextReplacement){
+		if (
+			this.settings
+				.removeLinksFromHeadingsInternalWikilinkWithoutTextAction ===
+			InternalWikilinkWithoutTextAction.None
+		) {
+			switch (
+				this.settings
+					.removeLinksFromHeadingsInternalWikilinkWithoutTextReplacement
+			) {
 				case "Destination":
-					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction = InternalWikilinkWithoutTextAction.ReplaceWithDestination;
+					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction =
+						InternalWikilinkWithoutTextAction.ReplaceWithDestination;
 					break;
 				case "LowestNoteHeading":
-					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction = InternalWikilinkWithoutTextAction.ReplaceWithLowestNoteHeading;
+					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction =
+						InternalWikilinkWithoutTextAction.ReplaceWithLowestNoteHeading;
 					break;
 				default:
-					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction = InternalWikilinkWithoutTextAction.ReplaceWithDestination;
+					this.settings.removeLinksFromHeadingsInternalWikilinkWithoutTextAction =
+						InternalWikilinkWithoutTextAction.ReplaceWithDestination;
 			}
 			await this.saveSettings();
 		}
 
 		this.addSettingTab(new ObsidianLinksSettingTab(this.app, this));
 
-		this.registerEditorSuggest(new LinkTextSuggest(this.linkTextSuggestContext));
+		this.registerEditorSuggest(
+			new LinkTextSuggest(this.linkTextSuggestContext)
+		);
 
 		const commands = getPaletteCommands(this.obsidianProxy, this.settings);
 		for (let cmd of commands) {
@@ -92,41 +128,55 @@ export default class ObsidianLinksPlugin extends Plugin {
 				id: cmd.id,
 				name: cmd.displayNameCommand,
 				icon: cmd.icon,
-				editorCheckCallback: (checking, editor, ctx) => cmd.handler(editor, checking)
+				editorCheckCallback: (checking, editor, ctx) =>
+					cmd.handler(editor, checking),
 			});
 		}
 
 		if (this.settings.ffReplaceLink) {
 			this.addCommand({
-				id: 'editor-replace-external-link-with-internal',
-				name: 'Replace link',
+				id: "editor-replace-external-link-with-internal",
+				name: "Replace link",
 				icon: "pencil",
-				editorCheckCallback: (checking, editor, ctx) => this.replaceExternalLinkUnderCursorHandler(editor, checking)
+				editorCheckCallback: (checking, editor, ctx) =>
+					this.replaceExternalLinkUnderCursorHandler(
+						editor,
+						checking
+					),
 			});
 		}
 
 		if (this.settings.ffReplaceLink) {
 			this.registerEvent(
-				this.app.workspace.on("file-open", (file) => this.replaceMarkdownTargetsInNote())
-			)
+				this.app.workspace.on("file-open", (file) =>
+					this.replaceMarkdownTargetsInNote()
+				)
+			);
 			this.registerEvent(
-				this.app.vault.on("delete", (file) => this.deleteFileHandler(file))
+				this.app.vault.on("delete", (file) =>
+					this.deleteFileHandler(file)
+				)
 			);
 
 			this.registerEvent(
-				this.app.vault.on("rename", (file, oldPath) => this.renameFileHandler(file, oldPath))
+				this.app.vault.on("rename", (file, oldPath) =>
+					this.renameFileHandler(file, oldPath)
+				)
 			);
 
 			this.registerEvent(
-				this.app.workspace.on('editor-paste', (evt, editor, view) => this.onEditorPaste(evt, editor, view))
+				this.app.workspace.on("editor-paste", (evt, editor, view) =>
+					this.onEditorPaste(evt, editor, view)
+				)
 			);
 
 			if (this.settings.ffReplaceLink) {
 				//TODO: temp command.
 				this.addCommand({
-					id: 'editor-replace-markdown-targets-in-note',
-					name: '#Replace markdown link in notes',
-					editorCallback: (editor: Editor, view: MarkdownView) => this.replaceMarkdownTargetsInNote()
+					id: "editor-replace-markdown-targets-in-note",
+					name: "#Replace markdown link in notes",
+					editorCallback: (editor: Editor, view: MarkdownView) =>
+						this.replaceMarkdownTargetsInNote(),
 				});
 			}
 		}
@@ -137,18 +187,20 @@ export default class ObsidianLinksPlugin extends Plugin {
 				const selection = editor.getSelection();
 				let addTopSeparator = function () {
 					menu.addSeparator();
-					addTopSeparator = function () { };
-				}
+					addTopSeparator = function () {};
+				};
 
-				const commands = getContextMenuCommands(this.obsidianProxy, this.settings);
+				const commands = getContextMenuCommands(
+					this.obsidianProxy,
+					this.settings
+				);
 				for (const cmd of commands) {
 					if (cmd == null) {
 						addTopSeparator();
 					} else {
 						if (cmd.handler(editor, true)) {
 							menu.addItem((item) => {
-								item
-									.setTitle(cmd.displayNameContextMenu)
+								item.setTitle(cmd.displayNameContextMenu)
 									.setIcon(cmd.icon)
 									.onClick(async () => {
 										cmd.handler(editor, false);
@@ -159,10 +211,12 @@ export default class ObsidianLinksPlugin extends Plugin {
 				}
 
 				if (linkData) {
-					if (this.settings.ffReplaceLink && this.settings.contexMenu.replaceLink) {
+					if (
+						this.settings.ffReplaceLink &&
+						this.settings.contexMenu.replaceLink
+					) {
 						menu.addItem((item) => {
-							item
-								.setTitle("Replace link")
+							item.setTitle("Replace link")
 								.setIcon("pencil")
 								.onClick(async () => {
 									this.replaceExternalLink(linkData, editor);
@@ -172,39 +226,71 @@ export default class ObsidianLinksPlugin extends Plugin {
 				}
 			})
 		);
+
+		const ribbonIconEl = this.addRibbonIcon(
+			"dice",
+			"Obsidian Words",
+			(evt: MouseEvent) => {
+				// Called when the user clicks the icon.
+				const menu = new Menu();
+
+				for (let cmd of commands) {
+					if (cmd.displayNameRibbon) {
+						menu.addItem((item) =>
+							item
+								.setTitle(cmd.displayNameRibbon as string)
+								.setIcon(cmd.icon)
+								.onClick(() => {
+									cmd.robbinHandler?.();
+								})
+						);
+					}
+				}
+
+
+				menu.showAtMouseEvent(evt);
+			}
+		);
 	}
 
-	onunload() {
-
-	}
+	onunload() {}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		this.linkTextSuggestContext.titleSeparator = this.settings.titleSeparator;
+		this.settings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData()
+		);
+		this.linkTextSuggestContext.titleSeparator =
+			this.settings.titleSeparator;
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
 
-		this.linkTextSuggestContext.titleSeparator = this.settings.titleSeparator;
+		this.linkTextSuggestContext.titleSeparator =
+			this.settings.titleSeparator;
 	}
 
 	getLink(editor: Editor): LinkData | undefined {
 		const text = editor.getValue();
-		const cursorOffset = editor.posToOffset(editor.getCursor('from'));
-		return findLink(text, cursorOffset, cursorOffset)
+		const cursorOffset = editor.posToOffset(editor.getCursor("from"));
+		return findLink(text, cursorOffset, cursorOffset);
 	}
 
 	convertHtmlLinksToMdLinks = () => {
 		const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (mdView && mdView.getViewData()) {
 			const text = mdView.getViewData();
-			const result = replaceAllHtmlLinks(text)
+			const result = replaceAllHtmlLinks(text);
 			mdView.setViewData(result, false);
 		}
-	}
+	};
 
-	replaceExternalLinkUnderCursorHandler(editor: Editor, checking: boolean): boolean | void {
+	replaceExternalLinkUnderCursorHandler(
+		editor: Editor,
+		checking: boolean
+	): boolean | void {
 		const linkData = this.getLink(editor);
 		if (checking) {
 			return !!linkData;
@@ -219,8 +305,8 @@ export default class ObsidianLinksPlugin extends Plugin {
 			if (path) {
 				this.settings.linkReplacements.push({
 					source: linkData.link!.content,
-					target: path
-				})
+					target: path,
+				});
 				await this.saveSettings();
 				this.replaceMarkdownTargetsInNote();
 			}
@@ -228,7 +314,7 @@ export default class ObsidianLinksPlugin extends Plugin {
 	}
 
 	escapeRegex(str: string): string {
-		return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&');
+		return str.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
 	}
 
 	replaceMarkdownTargetsInNote() {
@@ -236,7 +322,7 @@ export default class ObsidianLinksPlugin extends Plugin {
 			const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
 			if (mdView && mdView.getViewData()) {
 				const text = mdView.getViewData();
-				const [result, count] = this.replaceLinksInText(text)
+				const [result, count] = this.replaceLinksInText(text);
 				if (count) {
 					mdView.setViewData(result, false);
 					new Notice(`Links: ${count} items replaced.`);
@@ -248,30 +334,37 @@ export default class ObsidianLinksPlugin extends Plugin {
 		}
 	}
 
-
 	replaceLinksInText(text: string): [string, number] {
 		let targetText = text;
 		let totalCount = 0;
-		this.settings.linkReplacements.forEach(e => {
-			const [newText, count] = replaceMarkdownTarget(targetText, e.source, e.target);
+		this.settings.linkReplacements.forEach((e) => {
+			const [newText, count] = replaceMarkdownTarget(
+				targetText,
+				e.source,
+				e.target
+			);
 			targetText = newText;
 			totalCount += count;
 		});
 		return [targetText, totalCount];
 	}
 
-	onEditorPaste(evt: ClipboardEvent, editor: Editor, view: MarkdownView | MarkdownFileInfo) {
-		const html = evt.clipboardData?.getData('text/html');
-		if (html && html.indexOf('<a') > 0) {
+	onEditorPaste(
+		evt: ClipboardEvent,
+		editor: Editor,
+		view: MarkdownView | MarkdownFileInfo
+	) {
+		const html = evt.clipboardData?.getData("text/html");
+		if (html && html.indexOf("<a") > 0) {
 			const markdown = htmlToMarkdown(html);
 			const [text, count] = this.replaceLinksInText(markdown);
 			if (count) {
 				evt.preventDefault();
-				const fromOffset = editor.posToOffset(editor.getCursor('from'));
+				const fromOffset = editor.posToOffset(editor.getCursor("from"));
 				if (editor.getSelection()) {
 					editor.replaceSelection(text);
 				} else {
-					editor.replaceRange(text, editor.getCursor('from'));
+					editor.replaceRange(text, editor.getCursor("from"));
 				}
 				editor.setCursor(editor.offsetToPos(fromOffset + text.length));
 			}
@@ -284,10 +377,10 @@ export default class ObsidianLinksPlugin extends Plugin {
 			return;
 		}
 
-		const replacements = this.settings.linkReplacements.filter(r => {
-			const hashIdx = r.target.indexOf('#');
-			return hashIdx > 0 ?
-				r.target.substring(0, hashIdx) !== pathWithoutExtention
+		const replacements = this.settings.linkReplacements.filter((r) => {
+			const hashIdx = r.target.indexOf("#");
+			return hashIdx > 0
+				? r.target.substring(0, hashIdx) !== pathWithoutExtention
 				: r.target !== pathWithoutExtention;
 		});
 		this.settings.linkReplacements = replacements;
@@ -301,13 +394,16 @@ export default class ObsidianLinksPlugin extends Plugin {
 		}
 
 		let settingsChanged = false;
-		this.settings.linkReplacements.forEach(r => {
-			const hashIdx = r.target.indexOf('#');
-			const targetPath = hashIdx > 0 ? r.target.substring(0, hashIdx) : r.target;
+		this.settings.linkReplacements.forEach((r) => {
+			const hashIdx = r.target.indexOf("#");
+			const targetPath =
+				hashIdx > 0 ? r.target.substring(0, hashIdx) : r.target;
 			if (targetPath === oldPathWithoutExtention) {
 				const [newPathWithoutExtension] = removeExtention(file.path);
-				r.target = hashIdx > 0 ?
-					newPathWithoutExtension + r.target.substring(hashIdx) : newPathWithoutExtension;
+				r.target =
+					hashIdx > 0
+						? newPathWithoutExtension + r.target.substring(hashIdx)
+						: newPathWithoutExtension;
 				settingsChanged = true;
 			}
 		});
@@ -316,7 +412,3 @@ export default class ObsidianLinksPlugin extends Plugin {
 		}
 	}
 }
-
-
-
-
