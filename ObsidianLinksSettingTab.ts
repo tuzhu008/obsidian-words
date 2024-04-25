@@ -87,6 +87,18 @@ export class ObsidianLinksSettingTab extends PluginSettingTab {
 
             });
         new Setting(containerEl)
+            .setName('Add Furigana')
+            .setDesc('')
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.contexMenu.addFurigana)
+                    .onChange(async (value) => {
+                        this.plugin.settings.contexMenu.addFurigana = value;
+                        await this.plugin.saveSettings();
+                    })
+
+            });
+        new Setting(containerEl)
             .setName('Edit link text')
             .setDesc('')
             .addToggle((toggle) => {

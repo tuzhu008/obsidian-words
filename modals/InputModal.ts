@@ -15,14 +15,18 @@ import {
 	newDirectoryPath: string;
 	inputEl: HTMLInputElement;
 	instructionsEl: HTMLElement;
+	okButtonEl: HTMLButtonElement;
 	inputListener: EventListener;
+	okButtonListener: EventListener;
 
 	options: {
 		onFinish: (text: string) => void;
+		okButton?: boolean;
 	}
   
 	constructor(app: App, options: {
-		onFinish: (text: string) => void
+		onFinish: (text: string) => void,
+		okButton?: boolean,
 	}) {
 	  super(app);
 
@@ -62,17 +66,27 @@ import {
   
 		return child;
 	  });
+
 	  for (const child of children) {
 		this.instructionsEl.appendChild(child);
 	  }
+
+	  this.okButtonEl = document.createElement('button');
+	  this.okButtonEl.innerText = '确定';
   
 	  // make modal
 	  this.modalEl.className = 'prompt';
 	  this.modalEl.innerHTML = '';
 	  this.modalEl.appendChild(this.inputEl);
-	  this.modalEl.appendChild(this.instructionsEl);
+
+	  if (options.okButton) {
+		this.modalEl.appendChild(this.okButtonEl);
+	  } else {
+		this.modalEl.appendChild(this.instructionsEl);
+	  }
   
 	  this.inputListener = this.listenInput.bind(this);
+	  this.okButtonListener = this.listenOkButton.bind(this);
 	}
   
 	setFolder(folder: TFolder, newDirectoryPath: string) {
@@ -81,7 +95,7 @@ import {
 	}
   
 	listenInput(evt: KeyboardEvent) {
-	  if (evt.key === 'Enter') {
+	  if (evt.key === 'Enter' && !this.options.okButton) {
 		// prevent enter after note creation
 		evt.preventDefault();
 		// Do work
@@ -89,13 +103,23 @@ import {
 		this.close();
 	  }
 	}
+
+	listenOkButton(evt: Event) {
+		console.log('click')
+		evt.preventDefault();
+		// Do work
+		this.options.onFinish(this.inputEl.value);
+		this.close();
+	}
   
 	onOpen() {
 	  this.inputEl.focus();
 	  this.inputEl.addEventListener('keydown', this.inputListener);
+	  this.okButtonEl.addEventListener('click', this.okButtonListener);
 	}
   
 	onClose() {
 	  this.inputEl.removeEventListener('keydown', this.inputListener);
+	  this.okButtonEl.removeEventListener('click', this.okButtonListener);
 	}
   }

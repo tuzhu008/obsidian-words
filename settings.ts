@@ -22,6 +22,7 @@ export interface IObsidianLinksSettings {
 		removeWordLink: boolean,
 		createWordNote: boolean,
 		// addWordTask: boolean,
+		addFurigana: boolean,
 
 		editLinkText: boolean;
 		setLinkText: boolean;

@@ -29,6 +29,7 @@ import { ConvertLinksInFolderCommand } from "./ConvertLinksInFolderCommand";
 import { AddWordLinkFromSelectionCommand } from "./AddWordLinkFromSelectionCommand";
 import { RemoveWordLinkFromSelectionCommand } from "./RemoveWordLinkFromSelectionCommand";
 import { CreateWordNoteFromSelectionCommand } from "./CreateWordNoteFromSelectionCommand";
+import { AddFuriganaFromSelectionCommand } from "./AddFuriganaFromSelectionCommand";
 
 
 let commands: Map<string, ICommand> = new Map<string, ICommand>();
@@ -73,6 +74,7 @@ function createCommands(obsidianProxy: IObsidianProxy, settings: IObsidianLinksS
     commands.set(AddWordLinkFromSelectionCommand.name, new AddWordLinkFromSelectionCommand(() => settings.contexMenu.addWordLink));
     commands.set(RemoveWordLinkFromSelectionCommand.name, new RemoveWordLinkFromSelectionCommand(() => settings.contexMenu.removeWordLink));
     commands.set(CreateWordNoteFromSelectionCommand.name, new CreateWordNoteFromSelectionCommand(() => settings.contexMenu.createWordNote));
+    commands.set(AddFuriganaFromSelectionCommand.name, new AddFuriganaFromSelectionCommand(() => settings.contexMenu.addFurigana));
 }
 
 export function getPaletteCommands(obsidianProxy: IObsidianProxy, settings: IObsidianLinksSettings): ICommand[] {
@@ -105,6 +107,7 @@ export function getContextMenuCommands(obsidianProxy: IObsidianProxy, settings: 
         AddWordLinkFromSelectionCommand.name,
         RemoveWordLinkFromSelectionCommand.name,
         CreateWordNoteFromSelectionCommand.name,
+		AddFuriganaFromSelectionCommand.name,
 		null,
         CreateLinkFromSelectionCommand.name,
         CreateLinkFromClipboardCommand.name,
